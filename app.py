@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, make_response
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-from weasyprint import HTML
+import pdfkit
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
@@ -815,53 +815,42 @@ def delete_transaction(customer_id, txn_id):
     flash('Transaction deleted successfully!', 'success')
     return redirect(url_for('money_ledger_detail', customer_id=customer_id))
 
-@app.route('/bill/<int:bill_id>/pdf')
-def download_bill(bill_id):
-    # Fetch bill from DB (GST, Non-GST, or Job Bill)
-    bill = GSTBill.query.get_or_404(bill_id)   # adjust per bill type
-    customer = bill.customer  
 
-    # Render HTML using your template
+
+@app.route('/bill/<int:bill_id>/pdf')
+def download_gst_bill(bill_id):
+    bill = GSTBill.query.get_or_404(bill_id)
+    customer = bill.customer
     rendered = render_template("bill_pdf.html", bill=bill, customer=customer)
 
-    # Convert HTML → PDF
-    pdf = HTML(string=rendered).write_pdf()
+    pdf = pdfkit.from_string(rendered, False)  # False → returns PDF as bytes
 
-    # Send as downloadable response
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = f'attachment; filename=bill_{bill.id}.pdf'
     return response
+
 @app.route('/bill_non/<int:bill_id>/pdf')
 def download_non_gst_bill(bill_id):
-    # Fetch bill from DB (GST, Non-GST, or Job Bill)
-    bill = NonGSTBILL.query.get_or_404(bill_id)   # adjust per bill type
-    customer = bill.customer  
-
-    # Render HTML using your template
+    bill = NonGSTBILL.query.get_or_404(bill_id)
+    customer = bill.customer
     rendered = render_template("bill_pdf.html", bill=bill, customer=customer)
 
-    # Convert HTML → PDF
-    pdf = HTML(string=rendered).write_pdf()
+    pdf = pdfkit.from_string(rendered, False)
 
-    # Send as downloadable response
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = f'attachment; filename=bill_{bill.id}.pdf'
     return response
+
 @app.route('/bill_job/<int:bill_id>/pdf')
 def download_job_bill(bill_id):
-    # Fetch bill from DB (GST, Non-GST, or Job Bill)
-    bill = JobBill.query.get_or_404(bill_id)   # adjust per bill type
-    customer = bill.customer  
-
-    # Render HTML using your template
+    bill = JobBill.query.get_or_404(bill_id)
+    customer = bill.customer
     rendered = render_template("bill_pdf.html", bill=bill, customer=customer)
 
-    # Convert HTML → PDF
-    pdf = HTML(string=rendered).write_pdf()
+    pdf = pdfkit.from_string(rendered, False)
 
-    # Send as downloadable response
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = f'attachment; filename=bill_{bill.id}.pdf'
@@ -871,4 +860,3 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True)
-
