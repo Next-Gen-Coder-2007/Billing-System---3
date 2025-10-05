@@ -5,7 +5,7 @@ from weasyprint import HTML
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///billing.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://billing_system_3_user:f258FiKPqjJpLNltTvvEcD0lwYcReSNi@dpg-d3h0i8p5pdvs73es2aj0-a.oregon-postgres.render.com/billing_system_3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -871,3 +871,4 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
