@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block title %}Edit Non-GST Bill #{{ bill.id }}{% endblock %}
+{% block content %}
+<style>
+    .non-gst-bill-container {
+        margin: 0 auto;
+        padding: 1rem;
+        max-width: 1000px;
+    }
+    .page-header {
+        background: #6f42c1;
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+    }
+    .page-header h2 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.4rem;
+    }
+    .page-header p {
+        margin: 0.25rem 0 0 0;
+        opacity: 0.9;
+        font-size: 0.95rem;
+    }
+    .form-card {
+        background: white;
+        border-radius: 6px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        margin-bottom: 1rem;
+        border: 1px solid #e9ecef;
+    }
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .form-label {
+        font-weight: 500;
+        color: #495057;
+        margin-bottom: 0.3rem;
+        font-size: 0.9rem;
+        display: block;
+    }
+    .form-control {
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        padding: 0.45rem 0.75rem;
+        transition: all 0.15s;
+        font-size: 0.9rem;
+        width: 100%;
+    }
+    .form-control:focus {
+        border-color: #6f42c1;
+        box-shadow: 0 0 0 2px rgba(111, 66, 193, 0.1);
+        outline: none;
+    }
+    .item-row {
+        background: white;
+        border-radius: 4px;
+        padding: 0.75rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .item-header {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: #6c757d;
+        margin-bottom: 0.25rem;
+    }
+    .btn {
+        border-radius: 4px;
+        padding: 0.4rem 0.8rem;
+        font-weight: 500;
+        font-size: 0.85rem;
+        transition: all 0.15s;
+        border: none;
+        cursor: pointer;
+    }
+    .btn-primary {
+        background: #6f42c1;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #5a32a8;
+    }
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+    .btn-danger {
+        background: #dc3545;
+        color: white;
+        padding: 0.25rem 0.5rem;
+        min-width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .btn-danger:hover {
+        background: #c82333;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+        justify-content: flex-end;
+    }
+    .row {
+        display: flex;
+        flex-wrap: wrap;
+        margin-right: -0.5rem;
+        margin-left: -0.5rem;
+    }
+    .col {
+        flex: 1;
+        padding-right: 0.5rem;
+        padding-left: 0.5rem;
+        min-width: 120px;
+    }
+    .col-auto {
+        padding-right: 0.5rem;
+        padding-left: 0.5rem;
+    }
+    @media (max-width: 768px) {
+        .non-gst-bill-container {
+            padding: 0.75rem;
+        }
+        .form-card {
+            padding: 1rem;
+        }
+        .item-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .col-auto {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+        .btn-danger {
+            width: 100%;
+        }
+    }
+</style>
+<div class="non-gst-bill-container">
+    <div class="page-header">
+        <h2>Edit Non-GST Bill #{{ bill.id }}</h2>
+        <p>Customer: {{ customer.name }}</p>
+    </div>
+    <form method="POST">
+        <div class="form-card">
+            <div class="section-title">
+                Bill Items
+            </div>
+            <div id="items-container">
+                {% for item in bill.items %}
+                <div class="item-row">
+                    <div class="col">
+                        <label class="item-header">Item Name</label>
+                        <input type="text" name="item_name[]" class="form-control" value="{{ item.name }}" required>
+                    </div>
+                    <div class="col">
+                        <label class="item-header">Quantity</label>
+                        <input type="number" name="item_quantity[]" class="form-control" value="{{ item.quantity }}" required min="1">
+                    </div>
+                    <div class="col">
+                        <label class="item-header">Price (₹)</label>
+                        <input type="number" step="0.01" name="item_price[]" class="form-control" value="{{ item.price }}" required min="0">
+                    </div>
+                    <div class="col-auto">
+                        <label class="item-header d-none d-md-block">&nbsp;</label>
+                        <button type="button" class="btn btn-danger remove-item">−</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="button" id="add-item" class="btn btn-secondary mb-3">
+                Add Item
+            </button>
+            <div class="action-buttons">
+                <button type="button" class="btn btn-secondary" onclick="window.history.back()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update Non-GST Bill</button>
+            </div>
+        </div>
+    </form>
+</div>
+<div id="item-template" class="item-row" style="display:none;">
+    <div class="col">
+        <label class="item-header">Item Name</label>
+        <input type="text" name="item_name[]" class="form-control" placeholder="Enter item name" required>
+    </div>
+    <div class="col">
+        <label class="item-header">Quantity</label>
+        <input type="number" name="item_quantity[]" class="form-control" placeholder="Qty" required min="1">
+    </div>
+    <div class="col">
+        <label class="item-header">Price (₹)</label>
+        <input type="number" step="0.01" name="item_price[]" class="form-control" placeholder="0.00" required min="0">
+    </div>
+    <div class="col-auto">
+        <label class="item-header d-none d-md-block">&nbsp;</label>
+        <button type="button" class="btn btn-danger remove-item">−</button>
+    </div>
+</div>
+{% block scripts %}
+<script>
+    document.getElementById('add-item').addEventListener('click', function() {
+        const container = document.getElementById('items-container');
+        const template = document.getElementById('item-template');
+        const newRow = template.cloneNode(true);
+        newRow.style.display = '';
+        container.appendChild(newRow);
+    });
+    document.addEventListener('click', function(e) {
+        if(e.target.classList.contains('remove-item')){
+            const rows = document.querySelectorAll('.item-row');
+            const row = e.target.closest('.item-row');
+            if(rows.length > 1){
+                row.remove();
+            }
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}
