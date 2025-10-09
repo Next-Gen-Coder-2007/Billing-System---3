@@ -1,13 +1,14 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, make_response
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-import pdfkit
+# from weasyprint import HTML
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://billing_system_3_user:f258FiKPqjJpLNltTvvEcD0lwYcReSNi@dpg-d3h0i8p5pdvs73es2aj0-a.oregon-postgres.render.com/billing_system_3'
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 db = SQLAlchemy(app)
 
 class Customer(db.Model):
@@ -33,10 +34,18 @@ class GSTBill(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
     date = db.Column(db.DateTime, default=datetime.utcnow)
+    sub_total = db.Column(db.Float)
     total = db.Column(db.Float)
-    gst_amount = db.Column(db.Float)
+    gst_rate = db.Column(db.Float)
+    gst_type = db.Column(db.String(200), nullable=False)
+    sgst = db.Column(db.Float)
+    cgst = db.Column(db.Float)
+    igst = db.Column(db.Float)
+    total_kgs = db.Column(db.Integer)
+    total_nos = db.Column(db.Integer)
+    payment_status = db.Column(db.String(50), default='Pending')
+    payment_date = db.Column(db.DateTime, nullable=True)
     items = db.relationship('GSTBillItem', backref='bill', lazy=True)
-
 
 class NonGSTBill(db.Model):
     __tablename__ = 'non_gst_bill'
@@ -44,8 +53,9 @@ class NonGSTBill(db.Model):
     customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
     date = db.Column(db.DateTime, default=datetime.utcnow)
     total = db.Column(db.Float)
+    payment_status = db.Column(db.String(50), default='Pending')
+    payment_date = db.Column(db.DateTime, nullable=True)
     items = db.relationship('NonGSTBillItem', backref='bill', lazy=True)
-
 
 class JobBill(db.Model):
     __tablename__ = 'job_bill'
@@ -53,15 +63,17 @@ class JobBill(db.Model):
     customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
     date = db.Column(db.DateTime, default=datetime.utcnow)
     total = db.Column(db.Float)
-    description = db.Column(db.String(500))
+    payment_status = db.Column(db.String(50), default='Pending')
+    payment_date = db.Column(db.DateTime, nullable=True)
     items = db.relationship('JobBillItem', backref='bill', lazy=True)
-
 
 class GSTBillItem(db.Model):
     __tablename__ = 'gst_bill_item'
     id = db.Column(db.Integer, primary_key=True)
     bill_id = db.Column(db.Integer, db.ForeignKey('gst_bill.id'), nullable=False)
     name = db.Column(db.String(200), nullable=False)
+    hsn_code = db.Column(db.String(200), nullable=False)
+    unit = db.Column(db.String(200), nullable = False)
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False)
 
@@ -71,6 +83,7 @@ class NonGSTBillItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     bill_id = db.Column(db.Integer, db.ForeignKey('non_gst_bill.id'), nullable=False)
     name = db.Column(db.String(200), nullable=False)
+    unit = db.Column(db.String(200), nullable = False)
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False)
 
@@ -80,6 +93,7 @@ class JobBillItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     bill_id = db.Column(db.Integer, db.ForeignKey('job_bill.id'), nullable=False)
     name = db.Column(db.String(200), nullable=False)
+    unit = db.Column(db.String(200), nullable = False)
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False)
 
@@ -114,42 +128,23 @@ def dashboard():
     non_gst_total = non_gst_received = non_gst_pending = 0.0
     job_total = job_received = job_pending = 0.0
 
-    # Fetch all customers
-    customers = Customer.query.all()
+    # --- GST Bills ---
+    gst_bills = GSTBill.query.all()
+    gst_total = sum(bill.total for bill in gst_bills)
+    gst_received = sum(bill.total for bill in gst_bills if bill.payment_status == "Paid")
+    gst_pending = sum(bill.total for bill in gst_bills if bill.payment_status != "Paid")
 
-    for customer in customers:
-        # --- GST Bills ---
-        gst_bills = GSTBill.query.filter_by(customer_id=customer.id).all()
-        gst_total += sum(bill.total for bill in gst_bills)
+    # --- Non-GST Bills ---
+    non_gst_bills = NonGSTBill.query.all()
+    non_gst_total = sum(bill.total for bill in non_gst_bills)
+    non_gst_received = sum(bill.total for bill in non_gst_bills if bill.payment_status == "Paid")
+    non_gst_pending = sum(bill.total for bill in non_gst_bills if bill.payment_status != "Paid")
 
-        # Calculate received amount for GST bills
-        gst_received += sum(
-            min(bill.total, sum(txn.amount for txn in customer.money_ledger.transactions if txn.amount > 0))
-            for bill in gst_bills
-        )
-        gst_pending = gst_total - gst_received
-
-        # --- Non-GST Bills ---
-        non_gst_bills = NonGSTBill.query.filter_by(customer_id=customer.id).all()
-        non_gst_total += sum(bill.total for bill in non_gst_bills)
-
-        # Calculate received amount for Non-GST bills
-        non_gst_received += sum(
-            min(bill.total, sum(txn.amount for txn in customer.money_ledger.transactions if txn.amount > 0))
-            for bill in non_gst_bills
-        )
-        non_gst_pending = non_gst_total - non_gst_received
-
-        # --- Job Bills ---
-        job_bills = JobBill.query.filter_by(customer_id=customer.id).all()
-        job_total += sum(bill.total for bill in job_bills)
-
-        # Calculate received amount for Job bills
-        job_received += sum(
-            min(bill.total, sum(txn.amount for txn in customer.money_ledger.transactions if txn.amount > 0))
-            for bill in job_bills
-        )
-        job_pending = job_total - job_received
+    # --- Job Bills ---
+    job_bills = JobBill.query.all()
+    job_total = sum(bill.total for bill in job_bills)
+    job_received = sum(bill.total for bill in job_bills if bill.payment_status == "Paid")
+    job_pending = sum(bill.total for bill in job_bills if bill.payment_status != "Paid")
 
     return render_template(
         'home.html',
@@ -266,8 +261,9 @@ def customer_detail(id):
 @app.route('/gst_bills')
 def gst_bill_list():
     bills = GSTBill.query.all()
+    for bill in bills:
+        print("Total Kgs: ", bill.total_kgs, "Total Nos: ", bill.total_nos)
     return render_template('gst_bill_list.html', bills=bills)
-
 
 # ----------------------------
 # Add GST Bill
@@ -275,51 +271,79 @@ def gst_bill_list():
 @app.route('/gst_bill/add', methods=['GET', 'POST'])
 def add_gst_bill():
     customers = Customer.query.all()
-
+    last_bill = GSTBill.query.order_by(GSTBill.id.desc()).first()
+    last_bill_number = last_bill.id if last_bill else 0
     if request.method == 'POST':
         customer_id = int(request.form['customer_id'])
         customer = Customer.query.get_or_404(customer_id)
-
-        # Create the GST bill
+        gst_rate = float(request.form['gst_rate']) / 100  # Convert to decimal
+        gst_type = request.form['gst_type']
+        date_str = request.form['bill_date']
+        bill_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        # Create GST bill
         gst_bill = GSTBill(
             customer_id=customer_id,
-            gst_amount=0.0,
-            total=0.0
+            gst_rate=gst_rate,
+            gst_type=gst_type,
+            sub_total=0.0,
+            date=bill_date,
+            cgst=0.0,
+            sgst=0.0,
+            igst=0.0,
+            total=0.0,
         )
         db.session.add(gst_bill)
         db.session.commit()  # Commit to get bill.id
 
-        total = 0
-        gst_total = 0
-
         # Add bill items
         items = request.form.getlist('item_name[]')
+        hsns = request.form.getlist('item_hsn[]')
+        units = request.form.getlist('item_unit[]')
         quantities = request.form.getlist('item_quantity[]')
         prices = request.form.getlist('item_price[]')
 
-        for name, qty, price in zip(items, quantities, prices):
+        total = 0
+        sub_total = 0
+        gst_total = 0
+
+        for name, hsn, unit, qty, price in zip(items, hsns, units, quantities, prices):
             qty = int(qty)
             price = float(price)
             item_total = qty * price
-            gst_amount = item_total * 0.18  # Assuming 18% GST
-
+            gst_amount = item_total * gst_rate
             gst_total += gst_amount
             total += item_total + gst_amount
+            sub_total += item_total
 
             bill_item = GSTBillItem(
                 bill_id=gst_bill.id,
                 name=name,
+                hsn_code=hsn,
+                unit=unit,
                 quantity=qty,
                 price=price
             )
             db.session.add(bill_item)
 
-        gst_bill.total = total
-        gst_bill.gst_amount = gst_total
-        db.session.commit()
+        # Update GST amounts
+        if gst_type == "InterState":
+            gst_bill.igst = gst_total
+            gst_bill.sgst = 0.0
+            gst_bill.cgst = 0.0
+        else:  # IntraState
+            gst_bill.sgst = gst_total / 2
+            gst_bill.cgst = gst_total / 2
+            gst_bill.igst = 0.0
 
+        gst_bill.total = total
+        gst_bill.sub_total = sub_total
+        print("Sub-total:", sub_total, "GST:", gst_total, "Total:", total)
+        db.session.commit()
+        total_kgs = sum(item.quantity for item in gst_bill.items if item.unit == "Kgs")
+        total_units = sum(item.quantity for item in gst_bill.items if item.unit == "Nos")
+        gst_bill.total_kgs = total_kgs
+        gst_bill.total_nos = total_units
         # Automatic ledger debit
-        customer = Customer.query.get(customer_id)
         ledger = customer.money_ledger
         if ledger:
             txn = MoneyTransaction(
@@ -329,12 +353,9 @@ def add_gst_bill():
             )
             db.session.add(txn)
             db.session.commit()
-
         flash(f'GST Bill #{gst_bill.id} created successfully!', 'success')
         return redirect(url_for('gst_bill_list'))
-
-    return render_template('gst_bill_add.html', customers=customers)
-
+    return render_template('gst_bill_add.html', customers=customers, last_bill_number = last_bill_number)
 
 # ----------------------------
 # View GST Bill Details
@@ -378,57 +399,94 @@ def delete_gst_bill(id):
 def edit_gst_bill(id):
     bill = GSTBill.query.get_or_404(id)
     customer = bill.customer
+    customers = Customer.query.all()  # For the dropdown in the template
 
     if request.method == 'POST':
-
         # Delete old items
         for item in bill.items:
             db.session.delete(item)
+        db.session.commit()
+
+        # Get updated form data
+        gst_rate = float(request.form['gst_rate']) / 100  # Convert to decimal
+        gst_type = request.form['gst_type']
+        date_str = request.form['bill_date']
+        bill_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        bill.date = bill_date
+
+        # Reset bill totals
+        bill.customer_id = customer.id
+        bill.gst_type = gst_type
+        bill.gst_rate = gst_rate
+        bill.sub_total = 0.0
+        bill.cgst = 0.0
+        bill.sgst = 0.0
+        bill.igst = 0.0
+        bill.total = 0.0
 
         # Add updated items
         items = request.form.getlist('item_name[]')
+        hsns = request.form.getlist('item_hsn[]')
+        units = request.form.getlist('item_unit[]')
         quantities = request.form.getlist('item_quantity[]')
         prices = request.form.getlist('item_price[]')
 
         total = 0
+        sub_total = 0
         gst_total = 0
 
-        for name, qty, price in zip(items, quantities, prices):
+        for name, hsn, unit, qty, price in zip(items, hsns, units, quantities, prices):
             qty = int(qty)
             price = float(price)
             item_total = qty * price
-            gst_amount = item_total * 0.18  # 18% GST
+            gst_amount = item_total * gst_rate
             gst_total += gst_amount
             total += item_total + gst_amount
+            sub_total += item_total
 
             bill_item = GSTBillItem(
                 bill_id=bill.id,
                 name=name,
+                hsn_code=hsn,
+                unit=unit,
                 quantity=qty,
                 price=price
             )
             db.session.add(bill_item)
 
-        bill.total = total
-        bill.gst_amount = gst_total
-        db.session.commit()
+        # Update GST amounts based on type
+        if gst_type == "InterState":
+            bill.igst = gst_total
+            bill.sgst = 0.0
+            bill.cgst = 0.0
+        else:  # IntraState
+            bill.sgst = gst_total / 2
+            bill.cgst = gst_total / 2
+            bill.igst = 0.0
 
+        bill.total = total
+        bill.sub_total = sub_total
+
+        db.session.commit()
+        total_kgs = sum(item.quantity for item in bill.items if item.unit == "Kgs")
+        total_units = sum(item.quantity for item in bill.items if item.unit == "Nos")
+        bill.total_kgs = total_kgs
+        bill.total_nos = total_units
         # Update ledger transaction
         ledger = customer.money_ledger
-        txn = MoneyTransaction.query.filter_by(
-            ledger_id=ledger.id,
-            note=f'Debit for GST Bill #{bill.id}'
-        ).first()
-
-        if txn:
-            # Update debit amount to match new bill total
-            txn.amount = -bill.total
-            db.session.commit()
+        if ledger:
+            txn = MoneyTransaction.query.filter_by(
+                ledger_id=ledger.id,
+                note=f'Debit for GST Bill #{bill.id}'
+            ).first()
+            if txn:
+                txn.amount = -bill.total  # Update debit amount
+                db.session.commit()
 
         flash(f'GST Bill #{id} updated successfully!', 'success')
         return redirect(url_for('gst_bill_list'))
 
-    return render_template('gst_bill_edit.html', bill=bill, customer=customer)
+    return render_template('gst_bill_edit.html', bill=bill, customer=customer, customers=customers)
 
 @app.route('/non_gst_bills')
 def non_gst_bill_list():
@@ -442,21 +500,24 @@ def non_gst_bill_list():
 @app.route('/non_gst_bill/add', methods=['GET', 'POST'])
 def add_non_gst_bill():
     customers = Customer.query.all()
-
+    last_bill = NonGSTBill.query.order_by(NonGSTBill.id.desc()).first()
+    last_bill_number = last_bill.id if last_bill else 0
     if request.method == 'POST':
         customer_id = int(request.form['customer_id'])
         customer = Customer.query.get_or_404(customer_id)
-
-        bill = NonGSTBill(customer_id=customer_id, total=0.0)
+        date_str = request.form['bill_date']
+        bill_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        bill = NonGSTBill(customer_id=customer_id, total=0.0, date = bill_date)
         db.session.add(bill)
         db.session.commit()  # To get bill.id
 
         total = 0
         items = request.form.getlist('item_name[]')
+        units = request.form.getlist('item_unit[]')
         quantities = request.form.getlist('item_quantity[]')
         prices = request.form.getlist('item_price[]')
 
-        for name, qty, price in zip(items, quantities, prices):
+        for name, unit, qty, price in zip(items,units,  quantities, prices):
             qty = int(qty)
             price = float(price)
             item_total = qty * price
@@ -465,6 +526,7 @@ def add_non_gst_bill():
             bill_item = NonGSTBillItem(
                 bill_id=bill.id,
                 name=name,
+                unit=unit,
                 quantity=qty,
                 price=price
             )
@@ -489,7 +551,7 @@ def add_non_gst_bill():
         flash(f'Non-GST Bill #{bill.id} created successfully!', 'success')
         return redirect(url_for('non_gst_bill_list'))
 
-    return render_template('non_gst_bill_add.html', customers=customers)
+    return render_template('non_gst_bill_add.html', customers=customers, last_bill_number = last_bill_number)
 
 
 # ----------------------------
@@ -516,12 +578,13 @@ def delete_non_gst_bill(id):
 
     ledger = customer.money_ledger
     if ledger:
-        txn = MoneyTransaction.filter_by(
+        txn = MoneyTransaction.query.filter_by(
             ledger_id=ledger.id,
             note=f'Debit for Non-GST Bill #{bill.id}'
-        )
-        db.session.delete(txn)
-        db.session.commit()
+        ).first()
+        if txn:
+            db.session.delete(txn)
+            db.session.commit()
 
     db.session.delete(bill)
     db.session.commit()
@@ -541,14 +604,17 @@ def edit_non_gst_bill(id):
         # Delete old items
         for item in bill.items:
             db.session.delete(item)
-
+        date_str = request.form['bill_date']
+        bill_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        bill.date = bill_date
         # Add updated items
         items = request.form.getlist('item_name[]')
+        units = request.form.getlist('item_unit[]')
         quantities = request.form.getlist('item_quantity[]')
         prices = request.form.getlist('item_price[]')
 
         total = 0
-        for name, qty, price in zip(items, quantities, prices):
+        for name, unit, qty, price in zip(items,units, quantities, prices):
             qty = int(qty)
             price = float(price)
             item_total = qty * price
@@ -557,6 +623,7 @@ def edit_non_gst_bill(id):
             bill_item = NonGSTBillItem(
                 bill_id=bill.id,
                 name=name,
+                unit=unit,
                 quantity=qty,
                 price=price
             )
@@ -573,7 +640,6 @@ def edit_non_gst_bill(id):
         ).first()
 
         if txn:
-            # Update debit amount to match new bill total
             txn.amount = -bill.total
             db.session.commit()
 
@@ -594,22 +660,25 @@ def job_bill_list():
 @app.route('/job_bill/add', methods=['GET', 'POST'])
 def add_job_bill():
     customers = Customer.query.all()
-
+    last_bill = JobBill.query.order_by(JobBill.id.desc()).first()
+    last_bill_number = last_bill.id if last_bill else 0
     if request.method == 'POST':
         customer_id = int(request.form['customer_id'])
         customer = Customer.query.get_or_404(customer_id)
-        description = request.form.get('description', '')
+        date_str = request.form['bill_date']
+        bill_date = datetime.strptime(date_str, "%Y-%m-%d").date()
 
-        bill = JobBill(customer_id=customer_id, total=0.0, description=description)
+        bill = JobBill(customer_id=customer_id, total=0.0,date=bill_date)
         db.session.add(bill)
         db.session.commit()  # To get bill.id
 
         total = 0
         items = request.form.getlist('item_name[]')
+        units = request.form.getlist('item_unit[]')
         quantities = request.form.getlist('item_quantity[]')
         prices = request.form.getlist('item_price[]')
 
-        for name, qty, price in zip(items, quantities, prices):
+        for name, unit, qty, price in zip(items, units, quantities, prices):
             qty = int(qty)
             price = float(price)
             item_total = qty * price
@@ -617,6 +686,7 @@ def add_job_bill():
 
             bill_item = JobBillItem(
                 bill_id=bill.id,
+                unit=unit,
                 name=name,
                 quantity=qty,
                 price=price
@@ -640,7 +710,7 @@ def add_job_bill():
         flash(f'Job Bill #{bill.id} created successfully!', 'success')
         return redirect(url_for('job_bill_list'))
 
-    return render_template('job_bill_add.html', customers=customers)
+    return render_template('job_bill_add.html', customers=customers, last_bill_number = last_bill_number)
 
 
 # ----------------------------
@@ -700,11 +770,12 @@ def edit_job_bill(id):
 
         # Add updated items
         items = request.form.getlist('item_name[]')
+        units = request.form.getlist('item_unit[]')
         quantities = request.form.getlist('item_quantity[]')
         prices = request.form.getlist('item_price[]')
 
         total = 0
-        for name, qty, price in zip(items, quantities, prices):
+        for name,unit, qty, price in zip(items,units, quantities, prices):
             qty = int(qty)
             price = float(price)
             item_total = qty * price
@@ -713,6 +784,7 @@ def edit_job_bill(id):
             bill_item = JobBillItem(
                 bill_id=bill.id,
                 name=name,
+                unit=unit,
                 quantity=qty,
                 price=price
             )
@@ -816,45 +888,108 @@ def delete_transaction(customer_id, txn_id):
     return redirect(url_for('money_ledger_detail', customer_id=customer_id))
 
 
-
 @app.route('/bill/<int:bill_id>/pdf')
 def download_gst_bill(bill_id):
-    bill = GSTBill.query.get_or_404(bill_id)
-    customer = bill.customer
-    rendered = render_template("bill_pdf.html", bill=bill, customer=customer)
+    # bill = GSTBill.query.get_or_404(bill_id)
+    # customer = bill.customer
+    # rendered = render_template("bill_pdf.html", bill=bill, customer=customer)
 
-    pdf = pdfkit.from_string(rendered, False)  # False → returns PDF as bytes
+    # # Generate PDF
+    # pdf = HTML(string=rendered, base_url=request.root_url).write_pdf()
 
-    response = make_response(pdf)
-    response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = f'attachment; filename=bill_{bill.id}.pdf'
-    return response
+    # response = make_response(pdf)
+    # response.headers['Content-Type'] = 'application/pdf'
+    # response.headers['Content-Disposition'] = f'attachment; filename=bill_{bill.id}.pdf'
+    # return response
+    flash("Feature will be added soon")
+    return redirect(urf_for('gst_bill_list'))
+
 
 @app.route('/bill_non/<int:bill_id>/pdf')
 def download_non_gst_bill(bill_id):
-    bill = NonGSTBILL.query.get_or_404(bill_id)
-    customer = bill.customer
-    rendered = render_template("bill_pdf.html", bill=bill, customer=customer)
+    # bill = NonGSTBILL.query.get_or_404(bill_id)
+    # customer = bill.customer
+    # rendered = render_template("bill_pdf.html", bill=bill, customer=customer)
 
-    pdf = pdfkit.from_string(rendered, False)
+    # pdf = HTML(string=rendered, base_url=request.root_url).write_pdf()
 
-    response = make_response(pdf)
-    response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = f'attachment; filename=bill_{bill.id}.pdf'
-    return response
+    # response = make_response(pdf)
+    # response.headers['Content-Type'] = 'application/pdf'
+    # response.headers['Content-Disposition'] = f'attachment; filename=bill_{bill.id}.pdf'
+    # return response
+    flash("Feature will be added soon")
+    return redirect(urf_for('non_gst_bill_list'))
+
 
 @app.route('/bill_job/<int:bill_id>/pdf')
 def download_job_bill(bill_id):
+    # bill = JobBill.query.get_or_404(bill_id)
+    # customer = bill.customer
+    # rendered = render_template("bill_pdf.html", bill=bill, customer=customer)
+
+    # pdf = HTML(string=rendered, base_url=request.root_url).write_pdf()
+
+    # response = make_response(pdf)
+    # response.headers['Content-Type'] = 'application/pdf'
+    # response.headers['Content-Disposition'] = f'attachment; filename=bill_{bill.id}.pdf'
+    # return response
+    flash("Feature will be added soon")
+    return redirect(urf_for('job_bill_list'))
+
+
+@app.route('/gst_bill/<int:bill_id>/update_payment', methods=['POST'])
+def update_payment_status_gst(bill_id):
+    bill = GSTBill.query.get_or_404(bill_id)
+    payment_status = request.form['payment_status']
+    payment_date = request.form.get('payment_date')
+
+    # Validation: If status is Paid but no date provided
+    if payment_status == "Paid" and not payment_date:
+        flash('Please provide a payment date for Paid status.', 'danger')
+        return redirect(url_for('gst_bill_detail', id=bill_id))
+
+    bill.payment_status = payment_status
+    bill.payment_date = datetime.strptime(payment_date, '%Y-%m-%d') if payment_status == "Paid" else None
+
+    db.session.commit()
+    flash('Payment details updated successfully!', 'success')
+    return redirect(url_for('gst_bill_detail', id=bill_id))
+
+
+@app.route('/non_gst_bill/<int:bill_id>/update_payment', methods=['POST'])
+def update_payment_status_non_gst(bill_id):
+    bill = NonGSTBill.query.get_or_404(bill_id)
+    payment_status = request.form['payment_status']
+    payment_date = request.form.get('payment_date')
+
+    if payment_status == "Paid" and not payment_date:
+        flash('Please provide a payment date for Paid status.', 'danger')
+        return redirect(url_for('non_gst_bill_detail', id=bill_id))
+
+    bill.payment_status = payment_status
+    bill.payment_date = datetime.strptime(payment_date, '%Y-%m-%d') if payment_status == "Paid" else None
+
+    db.session.commit()
+    flash('Payment details updated successfully!', 'success')
+    return redirect(url_for('non_gst_bill_detail', id=bill_id))
+
+
+@app.route('/job_bill/<int:bill_id>/update_payment', methods=['POST'])
+def update_payment_status_job(bill_id):
     bill = JobBill.query.get_or_404(bill_id)
-    customer = bill.customer
-    rendered = render_template("bill_pdf.html", bill=bill, customer=customer)
+    payment_status = request.form['payment_status']
+    payment_date = request.form.get('payment_date')
 
-    pdf = pdfkit.from_string(rendered, False)
+    if payment_status == "Paid" and not payment_date:
+        flash('Please provide a payment date for Paid status.', 'danger')
+        return redirect(url_for('job_bill_detail', id=bill_id))
 
-    response = make_response(pdf)
-    response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = f'attachment; filename=bill_{bill.id}.pdf'
-    return response
+    bill.payment_status = payment_status
+    bill.payment_date = datetime.strptime(payment_date, '%Y-%m-%d') if payment_status == "Paid" else None
+
+    db.session.commit()
+    flash('Payment details updated successfully!', 'success')
+    return redirect(url_for('job_bill_detail', id=bill_id))
 
 if __name__ == '__main__':
     with app.app_context():
