@@ -82,10 +82,17 @@
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
     
-    .table {
-        margin: 0;
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch; /* For smooth scrolling on iOS */
     }
-    
+
+    /* Ensure the table is set to a reasonable width */
+    .table {
+        min-width: 100%;
+        width: auto;
+    }
+
     .table thead th {
         background: #f8fafc;
         border: none;
@@ -254,13 +261,26 @@
             flex-direction: column;
         }
         
-        .action-buttons {
-            flex-wrap: wrap;
-        }
-        
-        .table {
-            font-size: 0.85rem;
-        }
+    .table-responsive {
+        margin-bottom: 1rem;
+    }
+
+    .table th,
+    .table td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .action-buttons {
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .btn-action {
+        width: 32px;
+        height: 32px;
+        padding: 0.375rem;
+    }
     }
 </style>
 
@@ -301,6 +321,7 @@
 
 {% if customers %}
 <div class="customers-table-container mb-4">
+    <div class="table-responsive">
     <table class="table" id="customersTable">
         <thead>
             <tr>
@@ -361,6 +382,7 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% else %}
 <div class="customers-table-container mb-3">
