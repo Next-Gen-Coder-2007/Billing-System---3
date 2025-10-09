@@ -905,7 +905,7 @@ def download_gst_bill(bill_id):
     # response.headers['Content-Disposition'] = f'attachment; filename=bill_{bill.id}.pdf'
     # return response
     flash("Feature will be added soon")
-    return redirect(urf_for('gst_bill_list'))
+    return redirect(url_for('gst_bill_list'))
 
 
 @app.route('/bill_non/<int:bill_id>/pdf')
@@ -921,7 +921,7 @@ def download_non_gst_bill(bill_id):
     # response.headers['Content-Disposition'] = f'attachment; filename=bill_{bill.id}.pdf'
     # return response
     flash("Feature will be added soon")
-    return redirect(urf_for('non_gst_bill_list'))
+    return redirect(url_for('non_gst_bill_list'))
 
 
 @app.route('/bill_job/<int:bill_id>/pdf')
@@ -937,7 +937,7 @@ def download_job_bill(bill_id):
     # response.headers['Content-Disposition'] = f'attachment; filename=bill_{bill.id}.pdf'
     # return response
     flash("Feature will be added soon")
-    return redirect(urf_for('job_bill_list'))
+    return redirect(url_for('job_bill_list'))
 
 
 @app.route('/gst_bill/<int:bill_id>/update_payment', methods=['POST'])
@@ -998,6 +998,7 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
 
 
 
