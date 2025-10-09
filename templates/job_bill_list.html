@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}Job Bills{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Job Bills</h2>
+    <a href="{{ url_for('add_job_bill') }}" class="btn btn-success">
+        <i class="bi bi-plus-circle"></i> Add Job Bill
+    </a>
+</div>
+<!-- Real-time Search Section -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <input type="text" id="searchInput" class="form-control" placeholder="Search by customer name, description, or amount...">
+            </div>
+            <div class="col-md-3">
+                <input type="date" id="fromDate" class="form-control" placeholder="From Date">
+            </div>
+            <div class="col-md-3">
+                <input type="date" id="toDate" class="form-control" placeholder="To Date">
+            </div>
+        </div>
+        <div class="mt-2">
+            <small class="text-muted">Found: <span id="resultCount">{{ bills|length }}</span> bills</small>
+        </div>
+    </div>
+</div>
+<!-- Bills Table -->
+{% if bills %}
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover" id="billsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Bill No</th>
+                        <th>Customer</th>
+                        <th class="text-end">Total</th>
+                        <th class="text-center">Payment Status</th>
+                        <th>Date</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="billsTableBody">
+                    {% for bill in bills %}
+                    <tr data-bill-id="{{ bill.id }}"
+                        data-customer="{{ bill.customer.name|lower }}"
+                        data-description="{{ bill.description|lower }}"
+                        data-total="{{ bill.total }}"
+                        data-date="{{ bill.date.strftime('%Y-%m-%d') }}">
+                        <td>{{ loop.index }}</td>
+                        <td><strong>{{ bill.id }}</strong></td>
+                        <td>
+                            <div>{{ bill.customer.name }}</div>
+                            {% if bill.customer.phone %}
+                            <small class="text-muted">{{ bill.customer.phone }}</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-end"><strong>₹{{ "%.2f"|format(bill.total) }}</strong></td>
+                        <td class="text-center">
+                            {% if bill.payment_status == 'Paid' %}
+                                <span class="badge bg-success">Paid</span>
+                            {% elif bill.payment_status == 'Partially Paid' %}
+                                <span class="badge bg-warning text-dark">Partially Paid</span>
+                            {% else %}
+                                <span class="badge bg-danger">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ bill.date.strftime('%d %b %Y') }}</td>
+                        <td class="text-center">
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('job_bill_detail', id=bill.id) }}"
+                                   class="btn btn-sm btn-outline-primary"
+                                   title="View Details">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ url_for('download_job_bill', bill_id=bill.id) }}"
+                                   class="btn btn-sm btn-outline-success"
+                                   title="Download PDF">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                                <a href="{{ url_for('edit_job_bill', id=bill.id) }}"
+                                   class="btn btn-sm btn-outline-warning"
+                                   title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-danger"
+                                        title="Delete"
+                                        onclick="deleteBill({{ bill.id }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light" id="billsTableFooter">
+                    <tr>
+                        <th colspan="3" class="text-end">Total:</th>
+                        <th class="text-end" id="footerTotal"><strong>₹{{ "%.2f"|format(bills|sum(attribute='total')) }}</strong></th>
+                        <th colspan="3"></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div id="noResults" class="text-center py-4" style="display: none;">
+            <i class="bi bi-search" style="font-size: 3rem; color: #ccc;"></i>
+            <p class="text-muted mt-2">No bills match your search criteria</p>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Empty State -->
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-receipt" style="font-size: 4rem; color: #ccc;"></i>
+        <h4 class="mt-3">No Job Bills Found</h4>
+        <p class="text-muted">Start by creating your first job bill</p>
+        <a href="{{ url_for('add_job_bill') }}" class="btn btn-success mt-2">
+            <i class="bi bi-plus-circle"></i> Create First Job Bill
+        </a>
+    </div>
+</div>
+{% endif %}
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this bill? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display:inline-block;">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+// Real-time search functionality
+const searchInput = document.getElementById('searchInput');
+const fromDateInput = document.getElementById('fromDate');
+const toDateInput = document.getElementById('toDate');
+const tableBody = document.getElementById('billsTableBody');
+const resultCount = document.getElementById('resultCount');
+const noResults = document.getElementById('noResults');
+const tableFooter = document.getElementById('billsTableFooter');
+// Store original bill data for calculations
+const billsData = [];
+const rows = tableBody ? tableBody.querySelectorAll('tr') : [];
+rows.forEach(row => {
+    const totalText = row.children[4].textContent.replace('₹', '').replace(',', '');
+    billsData.push({
+        row: row,
+        total: parseFloat(totalText)
+    });
+});
+function filterBills() {
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    const fromDate = fromDateInput.value;
+    const toDate = toDateInput.value;
+
+    let visibleCount = 0;
+    let totalAmount = 0;
+
+    billsData.forEach(billData => {
+        const row = billData.row;
+        const customer = row.dataset.customer;
+        const description = row.dataset.description;
+        const billId = row.dataset.billId;
+        const total = row.dataset.total;
+        const billDate = row.dataset.date;
+
+        // Check search term match
+        const matchesSearch = searchTerm === '' ||
+            customer.includes(searchTerm) ||
+            description.includes(searchTerm) ||
+            billId.includes(searchTerm) ||
+            total.includes(searchTerm);
+
+        // Check date range
+        let matchesDateRange = true;
+        if (fromDate && billDate < fromDate) matchesDateRange = false;
+        if (toDate && billDate > toDate) matchesDateRange = false;
+
+        // Show or hide row
+        if (matchesSearch && matchesDateRange) {
+            row.style.display = '';
+            visibleCount++;
+            totalAmount += billData.total;
+
+            // Update row number
+            row.children[0].textContent = visibleCount;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    // Update result count
+    resultCount.textContent = visibleCount;
+
+    // Show/hide no results message
+    if (visibleCount === 0 && tableBody) {
+        noResults.style.display = 'block';
+        tableFooter.style.display = 'none';
+    } else {
+        noResults.style.display = 'none';
+        if (tableFooter) tableFooter.style.display = '';
+    }
+
+    // Update footer totals
+    if (visibleCount > 0) {
+        document.getElementById('footerTotal').innerHTML = '<strong>₹' + totalAmount.toFixed(2) + '</strong>';
+    }
+}
+// Add event listeners for real-time search
+if (searchInput) {
+    searchInput.addEventListener('input', filterBills);
+}
+if (fromDateInput) {
+    fromDateInput.addEventListener('change', filterBills);
+}
+if (toDateInput) {
+    toDateInput.addEventListener('change', filterBills);
+}
+// Delete bill function
+function deleteBill(billId) {
+    const deleteForm = document.getElementById('deleteForm');
+    deleteForm.action = "{{ url_for('delete_job_bill', id=0) }}".replace('0', billId);
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+// Clear filters function (optional - can add a clear button)
+function clearFilters() {
+    searchInput.value = '';
+    fromDateInput.value = '';
+    toDateInput.value = '';
+    filterBills();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Billing System{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #0d6efd;
+            --primary-dark: #0a58ca;
+            --primary-light: #6ea8fe;
+            --header-bg: #495057;
+            --header-gloss: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: var(--header-bg);
+            padding: 0.6rem 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid var(--header-gloss);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            letter-spacing: 0.5px;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .icon-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            text-decoration: none;
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .icon-btn:active {
+            transform: translateY(-1px);
+        }
+
+        .icon-btn i {
+            font-size: 1.2rem;
+            z-index: 1;
+        }
+
+        .icon-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translate(-50%, -50%);
+            transition: width 0.4s, height 0.4s;
+        }
+
+        .icon-btn:hover::before {
+            width: 100px;
+            height: 100px;
+        }
+
+        .tooltip-label {
+            position: absolute;
+            bottom: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 10;
+        }
+
+        .icon-btn:hover .tooltip-label {
+            opacity: 1;
+        }
+
+        .nav-icons {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .result {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            margin-top: 20px;
+            color: var(--primary);
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-content {
+            border-radius: 16px;
+            border: none;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border-radius: 16px 16px 0 0;
+            padding: 1.5rem;
+        }
+
+        .modal-title {
+            font-weight: 600;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+        }
+
+        .alert {
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .nav-icons {
+                gap: 0.5rem;
+            }
+
+            .icon-btn {
+                width: 45px;
+                height: 45px;
+            }
+
+            .icon-btn i {
+                font-size: 1rem;
+            }
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand text-white" href="{{ url_for('dashboard') }}">
+                <i class="fas fa-file-invoice-dollar me-2"></i> Billing System
+            </a>
+            <div class="nav-icons">
+                <a class="icon-btn" href="{{ url_for('dashboard') }}">
+                    <i class="fas fa-home"></i>
+                </a>
+                <a href="{{ url_for('gst_bill_list') }}" class="icon-btn">
+                    <i class="fas fa-receipt"></i>
+                    <span class="tooltip-label">GST Bills</span>
+                </a>
+
+                <a href="{{ url_for('non_gst_bill_list') }}" class="icon-btn">
+                    <i class="fas fa-file-alt"></i>
+                    <span class="tooltip-label">Non-GST Bills</span>
+                </a>
+
+                <a href="{{ url_for('job_bill_list') }}" class="icon-btn">
+                    <i class="fas fa-briefcase"></i>
+                    <span class="tooltip-label">Job Bills</span>
+                </a>
+
+                <div class="icon-btn" data-bs-toggle="modal" data-bs-target="#calculatorModal1">
+                    <i class="fas fa-calculator"></i>
+                    <span class="tooltip-label">2/100 Calc</span>
+                </div>
+
+                <div class="icon-btn" data-bs-toggle="modal" data-bs-target="#calculatorModal2">
+                    <i class="bi bi-calculator-fill"></i>
+                    <span class="tooltip-label">120 D Calc</span>
+                </div>
+
+                <div class="icon-btn" data-bs-toggle="modal" data-bs-target="#calculatorModal3">
+                    <i class="bi bi-calculator"></i>
+                    <span class="tooltip-label">75 D Calc</span>
+                </div>
+
+                <a href="{{ url_for('customer_list') }}" class="icon-btn">
+                    <i class="fas fa-users"></i>
+                    <span class="tooltip-label">Customers</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Rest of your HTML remains unchanged -->
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Modal Templates for Calculators -->
+    <div class="modal fade" id="calculatorModal1" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-calculator me-2"></i>2/100 Calculator</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="calcForm1" onsubmit="return false;">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="netPrice1" class="form-label">Net Price</label>
+                                <input type="number" class="form-control" id="netPrice1" step="0.01" min="0" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="jobWages1" class="form-label">Job Wages</label>
+                                <input type="number" class="form-control" id="jobWages1" step="0.01" min="0" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="profit1" class="form-label">Profit Percentage</label>
+                                <input type="number" class="form-control" id="profit1" step="0.01" min="0" max="100" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="rate1" class="form-label">Rate</label>
+                                <input type="number" class="form-control" id="rate1" step="0.01" min="0.01" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="eekki1" class="form-label">Eekki</label>
+                                <input type="number" class="form-control" id="eekki1" step="0.01" min="0" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="yards1" class="form-label">Yards</label>
+                                <input type="number" class="form-control" id="yards1" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                    </form>
+                    <div class="result" id="result1">0.00</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="clearCalculator(1)">Clear</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="calculatorModal2" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-calculator-fill me-2"></i>120 D Calculator</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="calcForm2" onsubmit="return false;">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="netPrice2" class="form-label">Net Price</label>
+                                <input type="number" class="form-control" id="netPrice2" step="0.01" min="0" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="jobWages2" class="form-label">Job Wages</label>
+                                <input type="number" class="form-control" id="jobWages2" step="0.01" min="0" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="profit2" class="form-label">Profit Percentage</label>
+                                <input type="number" class="form-control" id="profit2" step="0.01" min="0" max="100" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="rate2" class="form-label">Rate</label>
+                                <input type="number" class="form-control" id="rate2" step="0.01" min="0.01" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="eekki2" class="form-label">Eekki</label>
+                                <input type="number" class="form-control" id="eekki2" step="0.01" min="0" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="yards2" class="form-label">Yards</label>
+                                <input type="number" class="form-control" id="yards2" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                    </form>
+                    <div class="result" id="result2">0.00</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="clearCalculator(2)">Clear</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="calculatorModal3" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-calculator me-2"></i>75 D Calculator</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="calcForm3" onsubmit="return false;">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="netPrice3" class="form-label">Net Price</label>
+                                <input type="number" class="form-control" id="netPrice3" step="0.01" min="0" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="jobWages3" class="form-label">Job Wages</label>
+                                <input type="number" class="form-control" id="jobWages3" step="0.01" min="0" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="profit3" class="form-label">Profit Percentage</label>
+                                <input type="number" class="form-control" id="profit3" step="0.01" min="0" max="100" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="rate3" class="form-label">Rate</label>
+                                <input type="number" class="form-control" id="rate3" step="0.01" min="0.01" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="eekki3" class="form-label">Kunjam</label>
+                                <input type="number" class="form-control" id="eekki3" step="0.01" min="0" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="yards3" class="form-label">Yards</label>
+                                <input type="number" class="form-control" id="yards3" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                    </form>
+                    <div class="result" id="result3">0.00</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="clearCalculator(3)">Clear</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    {% block scripts %}{% endblock %}
+
+    <script>
+        // Calculator data storage (in-memory)
+        const calculatorData = {
+            1: {}, 2: {}, 3: {}
+        };
+
+        // Calculator functions
+        function calculate(calcNum) {
+            const netPrice = parseFloat(document.getElementById(`netPrice${calcNum}`).value) || 0;
+            const jobWages = parseFloat(document.getElementById(`jobWages${calcNum}`).value) || 0;
+            const profit = parseFloat(document.getElementById(`profit${calcNum}`).value) || 0;
+            const rate = parseFloat(document.getElementById(`rate${calcNum}`).value) || 0;
+            const eekki = parseFloat(document.getElementById(`eekki${calcNum}`).value) || 0;
+            const yards = parseFloat(document.getElementById(`yards${calcNum}`).value) || 0;
+            let result = 0;
+
+            if (rate > 0) {
+                const basePrice = (netPrice / 1.12) + jobWages;
+                const withProfit = basePrice + (basePrice * (profit / 100));
+
+                if (calcNum === 3) {
+                    // 75 D calculation
+                    result = ((withProfit / rate) / 71) * eekki * yards;
+                } else {
+                    // 2/100 and 120 D calculation
+                    result = ((withProfit / rate) * eekki / 73) * yards;
+                }
+            }
+
+            document.getElementById(`result${calcNum}`).textContent = result.toFixed(2);
+
+            // Store in memory
+            calculatorData[calcNum] = {
+                netPrice, jobWages, profit, rate, eekki, yards, result
+            };
+        }
+
+        function clearCalculator(calcNum) {
+            document.getElementById(`netPrice${calcNum}`).value = '';
+            document.getElementById(`jobWages${calcNum}`).value = '';
+            document.getElementById(`profit${calcNum}`).value = '';
+            document.getElementById(`rate${calcNum}`).value = '';
+            document.getElementById(`eekki${calcNum}`).value = '';
+            document.getElementById(`yards${calcNum}`).value = '';
+            document.getElementById(`result${calcNum}`).textContent = '0.00';
+            calculatorData[calcNum] = {};
+        }
+
+        // Attach event listeners to all calculator inputs
+        for (let i = 1; i <= 3; i++) {
+            const inputs = ['netPrice', 'jobWages', 'profit', 'rate', 'eekki', 'yards'];
+            inputs.forEach(inputName => {
+                const element = document.getElementById(`${inputName}${i}`);
+                if (element) {
+                    element.addEventListener('input', () => calculate(i));
+                }
+            });
+        }
+    </script>
+</body>
+</html>

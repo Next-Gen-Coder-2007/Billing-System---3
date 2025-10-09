@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+{% block title %}Customer: {{ customer.name }}{% endblock %}
+
+{% block content %}
+<style>
+    .customer-detail-header {
+        background: linear-gradient(135deg, #0D6EFD 0%, #0a58ca 100%);
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: 0 4px 6px rgba(13, 110, 253, 0.2);
+    }
+    
+    .customer-detail-header h2 {
+        margin: 0 0 0.5rem 0;
+        font-weight: 600;
+        font-size: 1.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .customer-detail-header .subtitle {
+        opacity: 0.9;
+        font-size: 0.95rem;
+    }
+    
+    .customer-info-card {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .customer-info-card h4 {
+        color: #1e293b;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        font-size: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .info-label {
+        font-size: 0.875rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .info-value {
+        font-size: 1rem;
+        color: #1e293b;
+        font-weight: 500;
+        padding: 0.75rem;
+        background: #f8fafc;
+        border-radius: 8px;
+        border-left: 3px solid #0D6EFD;
+    }
+    
+    .info-value.empty {
+        color: #94a3b8;
+        font-style: italic;
+    }
+    
+    .quick-access-card {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .quick-access-card h4 {
+        color: #1e293b;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        font-size: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .action-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    
+    .action-card {
+        background: white;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .action-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        border-color: #0D6EFD;
+    }
+    
+    .action-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        transition: all 0.3s ease;
+    }
+    
+    .action-card:hover .action-icon {
+        transform: scale(1.1);
+    }
+    
+    .action-gst .action-icon {
+        background: linear-gradient(135deg, #0D6EFD 0%, #0a58ca 100%);
+        color: white;
+    }
+    
+    .action-non-gst .action-icon {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    
+    .action-job .action-icon {
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        color: white;
+    }
+    
+    .action-ledger .action-icon {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: white;
+    }
+    
+    .action-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: #1e293b;
+        margin: 0;
+    }
+    
+    .action-description {
+        font-size: 0.875rem;
+        color: #64748b;
+        margin: 0;
+    }
+    
+    .action-gst:hover {
+        border-color: #0D6EFD;
+        background: linear-gradient(135deg, rgba(13, 110, 253, 0.05) 0%, rgba(10, 88, 202, 0.05) 100%);
+    }
+    
+    .action-non-gst:hover {
+        border-color: #10b981;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.05) 100%);
+    }
+    
+    .action-job:hover {
+        border-color: #fbbf24;
+        background: linear-gradient(135deg, rgba(251, 191, 36, 0.05) 0%, rgba(245, 158, 11, 0.05) 100%);
+    }
+    
+    .action-ledger:hover {
+        border-color: #8b5cf6;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(124, 58, 237, 0.05) 100%);
+    }
+    
+    @media (max-width: 768px) {
+        .customer-detail-header {
+            padding: 1.5rem;
+        }
+        
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .action-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="customer-detail-header">
+    <h2>
+        <i class="bi bi-person-badge"></i>
+        {{ customer.name }}
+    </h2>
+    <div class="subtitle">Customer Details & Quick Access</div>
+</div>
+
+<div class="customer-info-card">
+    <h4>
+        <i class="bi bi-info-circle"></i>
+        Contact Information
+    </h4>
+    <div class="info-grid">
+        <div class="info-item">
+            <div class="info-label">
+                <i class="bi bi-telephone"></i>
+                Phone Number
+            </div>
+            <div class="info-value">{{ customer.phone }}</div>
+        </div>
+        
+        <div class="info-item">
+            <div class="info-label">
+                <i class="bi bi-credit-card-2-front"></i>
+                GSTIN
+            </div>
+            <div class="info-value {% if not customer.gstin %}empty{% endif %}">
+                {{ customer.gstin or 'Not Available' }}
+            </div>
+        </div>
+        
+        <div class="info-item" style="grid-column: 1 / -1;">
+            <div class="info-label">
+                <i class="bi bi-geo-alt"></i>
+                Address
+            </div>
+            <div class="info-value">
+                {{ customer.address_line1 }}{% if customer.address_line2 %}, {{ customer.address_line2 }}{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="quick-access-card">
+    <h4>
+        <i class="bi bi-lightning-charge"></i>
+        Quick Access
+    </h4>
+    <div class="action-grid">
+        <a href="{{ url_for('gst_bill_list') }}?customer_id={{ customer.id }}" class="action-card action-gst">
+            <div class="action-icon">
+                <i class="bi bi-receipt"></i>
+            </div>
+            <div>
+                <h5 class="action-title">GST Bills</h5>
+                <p class="action-description">View & manage GST invoices</p>
+            </div>
+        </a>
+        
+        <a href="{{ url_for('non_gst_bill_list') }}?customer_id={{ customer.id }}" class="action-card action-non-gst">
+            <div class="action-icon">
+                <i class="bi bi-file-earmark-text"></i>
+            </div>
+            <div>
+                <h5 class="action-title">Non-GST Bills</h5>
+                <p class="action-description">View & manage non-GST bills</p>
+            </div>
+        </a>
+        
+        <a href="{{ url_for('job_bill_list') }}?customer_id={{ customer.id }}" class="action-card action-job">
+            <div class="action-icon">
+                <i class="bi bi-briefcase"></i>
+            </div>
+            <div>
+                <h5 class="action-title">Job Bills</h5>
+                <p class="action-description">View & manage job work bills</p>
+            </div>
+        </a>
+        
+        <a href="{{ url_for('money_ledger_detail', customer_id=customer.id) }}" class="action-card action-ledger">
+            <div class="action-icon">
+                <i class="bi bi-journal-text"></i>
+            </div>
+            <div>
+                <h5 class="action-title">Money Ledger</h5>
+                <p class="action-description">Track payments & balance</p>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Make sure Bootstrap Icons are included in your base.html -->
+<!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"> -->
+
+{% endblock %}

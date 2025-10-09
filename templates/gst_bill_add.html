@@ -1,0 +1,423 @@
+{% extends "base.html" %}
+{% block title %}Add GST Bill{% endblock %}
+{% block content %}
+<style>
+    .gst-bill-container {
+        margin: 0 auto;
+        padding: 1rem;
+    }
+
+    .page-header {
+        background: #0D6EFD;
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+    }
+
+    .page-header h2 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.4rem;
+    }
+
+    .form-card {
+        background: white;
+        border-radius: 6px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        margin-bottom: 1rem;
+        border: 1px solid #e9ecef;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: #495057;
+        margin-bottom: 0.3rem;
+        font-size: 0.9rem;
+        display: block;
+    }
+
+    .form-select, .form-control {
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        padding: 0.45rem 0.75rem;
+        transition: all 0.15s;
+        font-size: 0.9rem;
+        width: 100%;
+    }
+
+    .form-select:focus, .form-control:focus {
+        border-color: #2c3e50;
+        box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.1);
+        outline: none;
+    }
+
+    .items-section {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+
+    .item-row {
+        background: white;
+        border-radius: 4px;
+        padding: 0.75rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e9ecef;
+    }
+
+    .item-header {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: #6c757d;
+        margin-bottom: 0.25rem;
+    }
+
+    .btn {
+        border-radius: 4px;
+        padding: 0.4rem 0.8rem;
+        font-weight: 500;
+        font-size: 0.85rem;
+        transition: all 0.15s;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-primary {
+        background: #2c3e50;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #1a252f;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+
+    .btn-success {
+        background: #28a745;
+        color: white;
+        padding: 0.5rem 1.5rem;
+        font-size: 0.9rem;
+    }
+
+    .btn-success:hover {
+        background: #218838;
+    }
+
+    .btn-danger {
+        background: #dc3545;
+        color: white;
+        padding: 0.25rem 0.5rem;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+    }
+
+    .btn-danger:hover {
+        background: #c82333;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+        justify-content: flex-end;
+    }
+
+    .row {
+        display: flex;
+        flex-wrap: wrap;
+        margin-right: -0.5rem;
+        margin-left: -0.5rem;
+    }
+
+    .col-md-1, .col-md-2, .col-md-3, .col-md-4 {
+        padding-right: 0.5rem;
+        padding-left: 0.5rem;
+    }
+
+    .col-md-1 { flex: 0 0 8.333333%; }
+    .col-md-2 { flex: 0 0 16.666667%; }
+    .col-md-3 { flex: 0 0 25%; }
+    .col-md-4 { flex: 0 0 33.333333%; }
+
+    @media (max-width: 768px) {
+        .gst-bill-container {
+            padding: 0.75rem;
+        }
+
+        .form-card {
+            padding: 1rem;
+        }
+
+        .item-row .col-md-1,
+        .item-row .col-md-2,
+        .item-row .col-md-3,
+        .item-row .col-md-4 {
+            flex: 0 0 100%;
+            margin-bottom: 0.5rem;
+        }
+    }
+</style>
+<div class="gst-bill-container">
+    <div class="page-header">
+        <h2>Create GST Bill</h2>
+    </div>
+    <form method="POST">
+        <div class="form-card">
+            <div class="section-title">
+                Customer Information
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Select Customer</label>
+                <select name="customer_id" class="form-select" required>
+                    <option value="">-- Choose a customer --</option>
+                    {% for customer in customers %}
+                    <option value="{{ customer.id }}">{{ customer.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Bill Date</label>
+                    <input type="date" name="bill_date" class="form-control" id="bill_date" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Bill Number</label>
+                    <input type="text" name="bill_number" class="form-control" id="bill_number" readonly style="background: #f8f9fa;" value="{{ last_bill_number + 1}}">
+                </div>
+            </div>
+        </div>
+        <div class="form-card">
+            <div class="section-title">
+                Bill Items
+            </div>
+
+            <div class="items-section">
+                <div id="items-container">
+                    <div class="item-row">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <label class="item-header">Item Name</label>
+                                <input type="text" name="item_name[]" class="form-control" placeholder="Enter item name" required>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="item-header">HSN Code</label>
+                                <input type="text" name="item_hsn[]" class="form-control" placeholder="Enter HSN Code" required>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="item-header">Quantity</label>
+                                <input type="number" name="item_quantity[]" class="form-control" placeholder="Qty" required min="1">
+                            </div>
+                            <div class="col-md-1">
+                                <label class="item-header">Item Unit</label>
+                                <select name="item_unit[]" class="form-select">
+                                    <option value="" disabled selected>Select</option>
+                                    <option value="Kgs">Kgs</option>
+                                    <option value="Nos">Nos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="item-header">Price (₹)</label>
+                                <input type="number" step="0.01" name="item_price[]" class="form-control" placeholder="0.00" required min="0">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="item-header">Amount</label>
+                                <input type="text" class="form-control item-amount" placeholder="0.00" readonly style="background: #f8f9fa;">
+                            </div>
+                            <div class="col-md-1">
+                                <label class="item-header d-none d-md-block">&nbsp;</label>
+                                <button type="button" class="btn btn-danger remove-item" disabled>×</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button" id="add-item" class="btn btn-secondary mt-2">
+                    <span>Add Another Item</span>
+                </button>
+            </div>
+        </div>
+        <div class="form-card">
+            <div class="section-title">
+                Total and GST Details
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label class="form-label">Subtotal (₹)</label>
+                    <input type="text" class="form-control" id="subtotal" readonly style="background: #f8f9fa;">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">GST Rate (%)</label>
+                    <input type="number" class="form-control" id="gst_rate" name="gst_rate" placeholder="Enter GST Rate" required min="0" step="0.01">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">GST Type</label>
+                    <select class="form-select" id="gst_type" name="gst_type" required>
+                        <option value="" disabled selected>Select</option>
+                        <option value="InterState">IGST</option>
+                        <option value="InnerState">SGST & CGST</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">GST Amount (₹)</label>
+                    <input type="text" class="form-control" id="gst_amount" readonly style="background: #f8f9fa;">
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label class="form-label">Total (₹)</label>
+                    <input type="text" class="form-control" id="total" readonly style="background: #f8f9fa;">
+                </div>
+            </div>
+        </div>
+        <div class="action-buttons">
+            <button type="button" class="btn btn-secondary" onclick="window.history.back()">Cancel</button>
+            <button type="submit" class="btn btn-success">Create GST Bill</button>
+        </div>
+    </form>
+</div>
+<div id="item-template" class="item-row" style="display:none;">
+    <div class="row align-items-center">
+        <div class="col-md-4">
+            <label class="item-header">Item Name</label>
+            <input type="text" name="item_name[]" class="form-control" placeholder="Enter item name" required>
+        </div>
+        <div class="col-md-1">
+            <label class="item-header">HSN Code</label>
+            <input type="text" name="item_hsn[]" class="form-control" placeholder="Enter HSN Code" required>
+        </div>
+        <div class="col-md-1">
+            <label class="item-header">Quantity</label>
+            <input type="number" name="item_quantity[]" class="form-control" placeholder="Qty" required min="1">
+        </div>
+        <div class="col-md-1">
+            <label class="item-header">Item Unit</label>
+            <select name="item_unit[]" class="form-select">
+                <option value="" disabled selected>Select</option>
+                <option value="Kgs">Kgs</option>
+                <option value="Nos">Nos</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="item-header">Price (₹)</label>
+            <input type="number" step="0.01" name="item_price[]" class="form-control" placeholder="0.00" required min="0">
+        </div>
+        <div class="col-md-2">
+            <label class="item-header">Amount</label>
+            <input type="text" class="form-control item-amount" placeholder="0.00" readonly style="background: #f8f9fa;">
+        </div>
+        <div class="col-md-1">
+            <label class="item-header d-none d-md-block">&nbsp;</label>
+            <button type="button" class="btn btn-danger remove-item">×</button>
+        </div>
+    </div>
+</div>
+{% block scripts %}
+<script>
+function calculateAmount(row) {
+    const qty = parseFloat(row.querySelector('input[name="item_quantity[]"]').value) || 0;
+    const price = parseFloat(row.querySelector('input[name="item_price[]"]').value) || 0;
+    row.querySelector('.item-amount').value = (qty * price).toFixed(2);
+}
+// Delegated input listener for quantity/price
+document.getElementById('items-container').addEventListener('input', function(e) {
+    if (e.target.matches('input[name="item_quantity[]"], input[name="item_price[]"]')) {
+        calculateAmount(e.target.closest('.item-row'));
+    }
+});
+document.getElementById('add-item').addEventListener('click', function() {
+    const container = document.getElementById('items-container');
+    const template = document.getElementById('item-template');
+    // Clone the template
+    const newRow = template.cloneNode(true);
+    newRow.style.display = ''; // make it visible
+    newRow.id = ''; // remove id to avoid duplicates
+    // Clear input values
+    newRow.querySelectorAll('input').forEach(input => {
+        if (!input.classList.contains('item-amount')) input.value = '';
+        else input.value = '0.00';
+    });
+    container.appendChild(newRow);
+});
+// Remove item row
+document.getElementById('items-container').addEventListener('click', function(e) {
+    if (e.target.classList.contains('remove-item')) {
+        const rows = document.querySelectorAll('.item-row');
+        const row = e.target.closest('.item-row');
+        if (rows.length > 1) {
+            row.remove();
+        } else {
+            // If last row, reset its values instead of removing
+            row.querySelectorAll('input').forEach(input => {
+                if (!input.classList.contains('item-amount')) input.value = '';
+                else input.value = '0.00';
+            });
+        }
+    }
+});
+// Function to calculate subtotal
+function calculateSubtotal() {
+    let subtotal = 0;
+    document.querySelectorAll('.item-amount').forEach(amountField => {
+        subtotal += parseFloat(amountField.value) || 0;
+    });
+    document.getElementById('subtotal').value = subtotal.toFixed(2);
+    calculateGSTAndTotal();
+}
+
+// Function to calculate GST and total
+function calculateGSTAndTotal() {
+    const subtotal = parseFloat(document.getElementById('subtotal').value) || 0;
+    const gstRate = parseFloat(document.getElementById('gst_rate').value) || 0;
+    const gstAmount = (subtotal * gstRate) / 100;
+    const total = subtotal + gstAmount;
+
+    document.getElementById('gst_amount').value = gstAmount.toFixed(2);
+    document.getElementById('total').value = total.toFixed(2);
+}
+
+// Event listeners for item changes
+document.getElementById('items-container').addEventListener('input', function(e) {
+    if (e.target.matches('input[name="item_quantity[]"], input[name="item_price[]"]')) {
+        calculateAmount(e.target.closest('.item-row'));
+        calculateSubtotal();
+    }
+});
+
+// Event listeners for GST rate and type changes
+document.getElementById('gst_rate').addEventListener('input', calculateGSTAndTotal);
+document.getElementById('gst_type').addEventListener('change', calculateGSTAndTotal);
+// Set default date to today
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('bill_date').value = today;
+
+});
+
+</script>
+{% endblock %}
+{% endblock %}
