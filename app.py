@@ -6,7 +6,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
-app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://avnadmin:AVNS_CR6VGiAwUQURUxFM31z@mysql-1c92ec1a-subash2abc7-dd31.l.aivencloud.com:28778/defaultdb?ssl_mode=REQUIRED"
+app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://avnadmin:AVNS_CR6VGiAwUQURUxFM31z@mysql-1c92ec1a-subash2abc7-dd31.l.aivencloud.com:28778/defaultdb"
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -995,5 +995,6 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
 
 
