@@ -124,6 +124,12 @@
     .table {
         margin: 0;
     }
+
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch; /* For smooth scrolling on iOS */
+    margin-bottom: 1rem;
+}
     
     .table thead th {
         background: #f8fafc;
@@ -282,9 +288,22 @@
             padding: 1.5rem;
         }
         
-        .action-buttons {
-            flex-wrap: wrap;
-        }
+    .table th,
+    .table td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .action-buttons {
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .btn-action {
+        width: 32px;
+        height: 32px;
+        padding: 0.375rem;
+    }
     }
 </style>
 
@@ -339,7 +358,7 @@
 
 <div class="transactions-card">
     <h4><i class="bi bi-list-ul"></i> Transaction History</h4>
-    
+    <div class="table-responsive">
     {% if transactions %}
     <table class="table">
         <thead>
@@ -413,6 +432,7 @@
         <p>No transactions yet. Add your first transaction above.</p>
     </div>
     {% endif %}
+    </div>
 </div>
 
 <!-- Make sure Bootstrap Icons are included in your base.html -->
