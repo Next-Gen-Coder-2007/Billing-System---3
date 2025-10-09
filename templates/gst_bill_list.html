@@ -116,13 +116,13 @@
                 </tbody>
                 <tfoot class="table-light" id="billsTableFooter">
                     <tr>
-                        <th colspan="4" class="text-end">Total:</th>
+                        <th colspan="5" class="text-end">Total:</th>
                         <th class="text-end" id="footerSubtotal">₹{{ "%.2f"|format(bills|sum(attribute='sub_total')) }}</th>
                         <th class="text-end" id="footerCgst">₹{{ "%.2f"|format(bills|sum(attribute='cgst')) }}</th>
                         <th class="text-end" id="footerSgst">₹{{ "%.2f"|format(bills|sum(attribute='sgst')) }}</th>
                         <th class="text-end" id="footerIgst">₹{{ "%.2f"|format(bills|sum(attribute='igst')) }}</th>
                         <th class="text-end" id="footerTotal"><strong>₹{{ "%.2f"|format(bills|sum(attribute='total')) }}</strong></th>
-                        <th colspan="4"></th>
+                        <th colspan="3"></th>
                     </tr>
                 </tfoot>
             </table>
