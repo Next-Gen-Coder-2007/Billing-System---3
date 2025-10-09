@@ -120,6 +120,9 @@ class MoneyTransaction(db.Model):
         txn_type = "Credit" if self.amount > 0 else "Debit"
         return f"<MoneyTransaction {txn_type} {self.amount}>"
 
+with app.app_context():
+    db.create_all()
+
 
 @app.route('/')
 def dashboard():
@@ -995,6 +998,7 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
 
 
 
